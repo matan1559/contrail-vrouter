@@ -58,6 +58,8 @@ enum vr_opt_index {
     VTEST_VLAN_OPT_INDEX,
 #define VDEV_OPT                "vdev"
     VDEV_OPT_INDEX,
+#define PCI_WHITELIST_OPT       "pci-whitelist"
+    PCI_WHITELIST_OPT_INDEX,
 #define NO_GRO_OPT              "no-gro"
     NO_GRO_OPT_INDEX,
 #define NO_GSO_OPT              "no-gso"
@@ -923,6 +925,8 @@ static struct option long_options[] = {
                                                     NULL,                   0},
     [VTEST_VLAN_OPT_INDEX]          =   {VTEST_VLAN_OPT,        no_argument,
                                                     NULL,                   0},
+    [PCI_WHITELIST_OPT_INDEX]       =   {PCI_WHITELIST_OPT,     required_argument,
+                                                    NULL,                   0},
     [VDEV_OPT_INDEX]                =   {VDEV_OPT,              required_argument,
                                                     NULL,                   0},
     [NO_GRO_OPT_INDEX]              =   {NO_GRO_OPT,            no_argument,
@@ -967,6 +971,7 @@ Usage(void)
         "    --"HELP_OPT"       This help\n"
         "    --"VERSION_OPT"    Display build information\n"
         "\n"
+        "    --"PCI_WHITELIST_OPT" CONF Specify DPDK pci-whitelist args.\n"
         "    --"VDEV_OPT" CONF          Add a virtual device.\n"
         "                         The argument format is <driver><id>[,key=val,...]\n"
         "                         (ex: --"VDEV_OPT" eth_bond0,mode=4,slave=0000:04:00.0)\n"
@@ -1059,6 +1064,10 @@ parse_long_opts(int opt_flow_index, char *optarg)
 
     case VDEV_OPT_INDEX:
         dpdk_argv_append("--"VDEV_OPT, optarg);
+        break;
+
+    case PCI_WHITELIST_OPT_INDEX:
+        dpdk_argv_append("--"PCI_WHITELIST_OPT, optarg);
         break;
 
     case BRIDGE_ENTRIES_OPT_INDEX:
