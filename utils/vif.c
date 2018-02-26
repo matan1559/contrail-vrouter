@@ -83,7 +83,7 @@
 static struct nl_client *cl;
 static char flag_string[64], if_name[IFNAMSIZ];
 static int if_kindex = -1, vrf_id, vr_ifindex = -1;
-static int if_pmdindex = -1, vif_index = -1;
+static int if_pmdindex = -1, vif_index = -1, vif_ip = 0;
 static bool need_xconnect_if = false;
 static bool need_vif_id = false;
 static int if_xconnect_kindex = -1;
@@ -95,7 +95,7 @@ static int8_t vr_transport = 0;
 static int add_set, create_set, get_set, list_set;
 static int kindex_set, type_set, transport_set, help_set, set_set, vlan_set, dhcp_set;
 static int vrf_set, mac_set, delete_set, policy_set, pmd_set, vindex_set, pci_set;
-static int xconnect_set, vif_set, vhost_phys_set, core_set, rate_set, drop_set;
+static int xconnect_set, vif_set, vhost_phys_set, core_set, rate_set, drop_set, ip_set;
 #ifdef _WIN32
 static int guid_set;
 #endif
@@ -988,15 +988,16 @@ op_retry:
         if (!guid_set) {
             ret = vr_send_interface_add(cl, 0, if_name, if_kindex, vr_ifindex,
                     if_xconnect_kindex, vr_if_type, vrf, vr_ifflags, vr_ifmac,
-                    vr_transport, NULL);
+                    vr_transport, vif_ip, NULL);
         } else {
             ret = vr_send_interface_add(cl, 0, if_name, if_kindex, vr_ifindex,
                     if_xconnect_kindex, vr_if_type, vrf, vr_ifflags, vr_ifmac,
-                    vr_transport, vr_if_guid);
+                    vr_transport, vif_ip, vr_if_guid);
         }
 #else
         ret = vr_send_interface_add(cl, 0, if_name, if_kindex, vr_ifindex,
-                if_xconnect_kindex, vr_if_type, vrf, vr_ifflags, vr_ifmac, vr_transport, NULL);
+                if_xconnect_kindex, vr_if_type, vrf, vr_ifflags, vr_ifmac,
+                vr_transport, vif_ip, NULL);
 #endif
         break;
 
@@ -1076,7 +1077,7 @@ Usage()
     printf("\t   \t--transport [eth|pmd|virtual|socket]\n");
     printf("\t   \t--xconnect <physical interface name>\n");
     printf("\t   \t--policy, --vhost-phys, --dhcp-enable]\n");
-    printf("\t   \t--vif <vif ID> --id <intf_id> --pmd --pci]\n");
+    printf("\t   \t--vif <vif ID> --id <intf_id> --pmd --pci --ip ipv4_addr]\n");
 #ifdef _WIN32
     printf("\t   \t--guid <GUID>\n");
 #endif
@@ -1115,6 +1116,7 @@ enum if_opt_index {
     HELP_OPT_INDEX,
     VINDEX_OPT_INDEX,
     CORE_OPT_INDEX,
+    IP_OPT_INDEX,
 #ifdef _WIN32
     GUID_OPT_INDEX,
 #endif
@@ -1146,6 +1148,7 @@ static struct option long_options[] = {
     [HELP_OPT_INDEX]        =   {"help",        no_argument,        &help_set,          1},
     [VINDEX_OPT_INDEX]      =   {"id",          required_argument,  &vindex_set,        1},
     [CORE_OPT_INDEX]        =   {"core",        required_argument,  &core_set,          1},
+    [IP_OPT_INDEX]          =   {"ip",          required_argument,  &ip_set,            1},
 #ifdef _WIN32
     [GUID_OPT_INDEX]        =   {"guid",        required_argument,  &guid_set,          1},
 #endif
@@ -1259,6 +1262,11 @@ parse_long_opts(int option_index, char *opt_arg)
                 usage_internal("vif add --id");
 
             if (errno)
+                Usage();
+            break;
+
+        case IP_OPT_INDEX:
+           if (inet_pton(AF_INET, opt_arg, &vif_ip) != 1)
                 Usage();
             break;
 
