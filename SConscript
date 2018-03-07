@@ -222,6 +222,7 @@ if sys.platform != 'darwin':
             '-lrte_pmd_ixgbe',
             '-lrte_pmd_e1000',
         #    '-lrte_pmd_mlx4',
+            '-lrte_pmd_mlx5',
         #    '-lrte_pmd_ring',
         #    '-lrte_pmd_pcap',
             '-lrte_pmd_af_packet'
