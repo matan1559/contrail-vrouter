@@ -1557,7 +1557,7 @@ vr_send_nexthop_encap_tunnel_add(struct nl_client *cl, unsigned int router_id,
     }
 
     if (type == NH_ENCAP)
-        req.nhr_family = AF_BRIDGE;
+        req.nhr_family = AF_INET;
 
     return vr_sendmsg(cl, &req, "vr_nexthop_req");
 }
@@ -1578,6 +1578,7 @@ vr_send_nexthop_add(struct nl_client *cl, unsigned int router_id,
     req.nhr_flags = flags;
     req.nhr_type = type;
     req.nhr_encap_oif_id = vif_index;
+    req.nhr_family = AF_INET;
 
     return vr_sendmsg(cl, &req, "vr_nexthop_req");
 }
