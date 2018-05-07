@@ -1750,8 +1750,8 @@ vrouter_setup_vif(struct vr_interface *vif)
     case VIF_TYPE_HOST:
         if (!agent_alive) {
             vif_set_xconnect(vif);
-            if (vif->vif_bridge)
-                vif_set_xconnect(vif->vif_bridge);
+            //if (vif->vif_bridge)
+                //vif_set_xconnect(vif->vif_bridge);
         } else {
             vif_remove_xconnect(vif);
             if (vif->vif_bridge)
