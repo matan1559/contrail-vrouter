@@ -955,7 +955,7 @@ int
 vr_send_interface_add(struct nl_client *cl, int router_id, char *vif_name,
         int os_index, int vif_index, int vif_xconnect_index, int vif_type,
         unsigned int vrf, unsigned int flags, int8_t *vif_mac, int8_t vif_transport,
-	unsigned int ip, const char *guid)
+	unsigned int ip, unsigned int nh_id, const char *guid)
 {
     int platform;
     vr_interface_req req;
@@ -982,6 +982,7 @@ vr_send_interface_add(struct nl_client *cl, int router_id, char *vif_name,
     req.vifr_flags = flags;
     req.vifr_transport = vif_transport;
     req.vifr_ip = ip;
+    req.vifr_nh_id = nh_id;
 
     if (vif_type == VIF_TYPE_HOST) {
         req.vifr_cross_connect_idx = vif_xconnect_index;
