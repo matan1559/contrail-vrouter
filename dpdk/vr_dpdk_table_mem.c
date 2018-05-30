@@ -113,14 +113,22 @@ vr_hugepage_info_init(void)
                 hp->num_pages = hp->size / hp->page_size;
             } else {
                 sys_fp = fopen(sys_hp_file, "r");
-                if (!sys_fp)
-                    goto exit_func;
+                if (!sys_fp) {
+                    free(hp->mnt);
+                    hp->mnt = NULL;
+                    continue;
+                }
 
                 str = fgets(nr_pages, MAX_LINE_SIZE, sys_fp);
-                if (str == NULL)
+                if (str == NULL) {
+                    free(hp->mnt);
+                    hp->mnt = NULL;
+                    fclose(sys_fp);
                     goto exit_func;
+                }
                 hp->num_pages = strtoul(nr_pages, NULL, 0);
                 hp->size = hp->num_pages * hp->page_size;
+                fclose(sys_fp);
             }
 
         }
@@ -129,9 +137,6 @@ vr_hugepage_info_init(void)
 exit_func:
     if (fp)
         fclose(fp);
-
-    if (sys_fp)
-        fclose(sys_fp);
 
     return 0;
 }
