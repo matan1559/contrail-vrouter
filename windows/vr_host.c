@@ -1036,6 +1036,9 @@ struct host_os windows_host = {
     .hos_get_enabled_log_types = win_get_enabled_log_types,
     .hos_soft_reset = win_soft_reset,
     .hos_register_nic = win_register_nic,
+    .hos_offload_flow_create = NULL,
+    .hos_offload_flow_destroy = NULL,
+    .hos_offload_flow_index_get = NULL,
 };
 
 struct host_os *

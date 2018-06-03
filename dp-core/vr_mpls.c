@@ -351,11 +351,14 @@ vr_mpls_input(struct vrouter *router, struct vr_packet *pkt,
         goto dropit;
     }
 
-    nh = __vrouter_get_label(router, label);
-    if (!nh) {
-        drop_reason = VP_DROP_INVALID_LABEL;
-        goto dropit;
-    }
+    if (!fmd->fmd_oflow) {
+        nh = __vrouter_get_label(router, label);
+        if (!nh) {
+            drop_reason = VP_DROP_INVALID_LABEL;
+            goto dropit;
+        }
+    } else
+        nh = pkt->vp_nh;
 
     /*
      * Mark it for GRO. Diag, L2 and multicast nexthops unmark if

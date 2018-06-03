@@ -2375,6 +2375,10 @@ struct host_os linux_host = {
     .hos_nl_broadcast_supported     =       true,
     .hos_huge_page_config           =       lh_huge_page_config,
     .hos_huge_page_mem_get          =       lh_huge_mem_get,
+    .hos_offload_flow_create        =       NULL,
+    .hos_offload_flow_destroy       =      NULL,
+    .hos_offload_flow_index_get     =      NULL,
+
 };
     
 struct host_os *

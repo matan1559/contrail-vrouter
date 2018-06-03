@@ -1480,29 +1480,35 @@ vr_flow_lookup(struct vrouter *router, struct vr_flow *key,
 
     pkt->vp_flags |= VP_FLAG_FLOW_SET;
 
-
-    flow_e = vr_find_flow(router, key, pkt->vp_type,  &fe_index);
-    if (!flow_e) {
-        if (pkt->vp_nh &&
-            (pkt->vp_nh->nh_flags &
-             (NH_FLAG_RELAXED_POLICY | NH_FLAG_FLOW_LOOKUP)))
-            return FLOW_FORWARD;
-
-        if (!vr_flow_allow_new_flow(router, pkt, &drop_reason, &burst)) {
-            vr_pfree(pkt, drop_reason);
-            return FLOW_CONSUMED;
-        }
-
-        flow_e = vr_flow_get_free_entry(router, key, pkt->vp_type,
-                true, &fe_index);
+    if (!fmd->fmd_oflow) {
+        flow_e = vr_find_flow(router, key, pkt->vp_type,  &fe_index);
         if (!flow_e) {
-            vr_pfree(pkt, VP_DROP_FLOW_TABLE_FULL);
-            return FLOW_CONSUMED;
-        }
+            if (pkt->vp_nh &&
+                (pkt->vp_nh->nh_flags &
+                 (NH_FLAG_RELAXED_POLICY | NH_FLAG_FLOW_LOOKUP)))
+                return FLOW_FORWARD;
 
-        flow_e->fe_vrf = fmd->fmd_dvrf;
-        /* mark as hold */
-        vr_flow_entry_set_hold(router, flow_e, burst);
+            if (!vr_flow_allow_new_flow(router, pkt, &drop_reason, &burst)) {
+                vr_pfree(pkt, drop_reason);
+                return FLOW_CONSUMED;
+            }
+
+            flow_e = vr_flow_get_free_entry(router, key, pkt->vp_type,
+                    true, &fe_index);
+            if (!flow_e) {
+                vr_pfree(pkt, VP_DROP_FLOW_TABLE_FULL);
+                return FLOW_CONSUMED;
+            }
+
+            flow_e->fe_vrf = fmd->fmd_dvrf;
+            /* mark as hold */
+            vr_flow_entry_set_hold(router, flow_e, burst);
+
+            vr_offload_flow_new_entry_set(fe_index, flow_e, fmd, pkt);
+        }
+    } else {
+        flow_e = fmd->fmd_oflow->fe;
+        fe_index = fmd->fmd_oflow->fe_index;
     }
 
     if (flow_e->fe_flags & VR_FLOW_FLAG_EVICT_CANDIDATE)
