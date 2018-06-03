@@ -920,6 +920,15 @@ void dpdk_ring_to_push_add(unsigned lcore_id, struct rte_ring *tx_ring,
 void
 dpdk_ring_to_push_remove(unsigned lcore_id, struct rte_ring *tx_ring);
 
+/* Create dpdk datapath offload flow */
+int
+dpdk_offload_flow_create(struct vr_offload_flow *oflow);
+/* Destroy dpdk datapath offload flow */
+int
+dpdk_offload_flow_destroy(struct vr_offload_flow *oflow);
+/* Get the index of a datapath offload flow */
+int
+dpdk_offload_flow_index_get(struct vr_packet *pkt, unsigned int *res);
 /*
  * vr_dpdk_fragment_assembler.c
  */
