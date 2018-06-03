@@ -6,7 +6,6 @@
 
 #ifndef __VR_OFFLOADS_H__
 #define __VR_OFFLOADS_H__
-
 #include <vr_os.h>
 #include <vr_types.h>
 #include <vr_defs.h>
@@ -33,7 +32,7 @@
 #if defined(__KERNEL__) && defined(__linux__)
     #define vr_rcu_dereference(p) rcu_dereference(p);
 #else
-    #define vr_rcu_dereference(p) NULL;
+    #define vr_rcu_dereference(p) p;
 #endif
 
 struct vr_offload_ops {
@@ -48,6 +47,8 @@ struct vr_offload_ops {
     int (*voo_flow_del)(struct vr_flow_entry *);
     int (*voo_flow_meta_data_set)(unsigned int, unsigned int, void *,
                               unsigned short);
+    int (*voo_flow_new_entry_set)(unsigned int, struct vr_flow_entry *,
+                              struct vr_forwarding_md *, struct vr_packet *);
 
     /* Dropstats */
     int (*voo_drop_stats_get)(vr_drop_stats_req *response);
@@ -149,6 +150,18 @@ static inline int vr_offload_flow_meta_data_set(unsigned int fe_index,
     if (offload && offload->voo_flow_meta_data_set)
         return offload->voo_flow_meta_data_set(fe_index, meta_data_len,
                                     meta_data, mir_vrf);
+    return 0;
+}
+
+static inline int vr_offload_flow_new_entry_set(unsigned int fe_index,
+                                                struct vr_flow_entry *fe,
+                                                struct vr_forwarding_md *fmd,
+                                                struct vr_packet *pkt)
+{
+    struct vr_offload_ops *offload = vr_rcu_dereference(offload_ops);
+
+    if (offload && offload->voo_flow_new_entry_set)
+            return offload->voo_flow_new_entry_set(fe_index, fe, fmd, pkt);
     return 0;
 }
 

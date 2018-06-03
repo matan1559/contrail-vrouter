@@ -1012,6 +1012,9 @@ enum {
 #define FMD_FLAG_ETREE_ENABLE           0x04
 #define FMD_FLAG_ETREE_ROOT             0x08
 #define FMD_FLAG_L2_CONTROL_DATA        0x10
+#define FMD_FLAG_TUNNEL_TYPE_GRE        0x20
+#define FMD_FLAG_TUNNEL_TYPE_MPLS_UDP   0x40
+#define FMD_FLAG_TUNNEL_TYPE_VXLAN      0x80
 
 /*
  * 16 bits of fmd_mirror_data constitutes the below
@@ -1023,6 +1026,7 @@ enum {
 #define FMD_MIRROR_INVALID_DATA 0xFFFF
 
 struct vr_forwarding_md {
+    struct vr_offload_flow *fmd_oflow;
     int32_t fmd_flow_index;
     int32_t fmd_label;
     int8_t fmd_ecmp_nh_index;
@@ -1044,6 +1048,7 @@ struct vr_forwarding_md {
 static inline void
 vr_init_forwarding_md(struct vr_forwarding_md *fmd)
 {
+    fmd->fmd_oflow = NULL;
     fmd->fmd_flow_index = -1;
     fmd->fmd_ecmp_nh_index = -1;
     fmd->fmd_ecmp_src_nh_index = -1;

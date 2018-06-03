@@ -1471,6 +1471,8 @@ struct host_os dpdk_host = {
     .hos_is_frag_limit_exceeded     =    dpdk_is_frag_limit_exceeded,
     .hos_register_nic               =    dpdk_register_nic, /* not used with DPDK */
     .hos_nl_broadcast_supported     =    false,
+    .hos_offload_flow_create        =    NULL,
+    .hos_offload_flow_destroy       =    NULL,
 };
 
 struct host_os *
@@ -1551,6 +1553,7 @@ vr_dpdk_packet_get(struct rte_mbuf *m, struct vr_interface *vif)
     pkt->vp_type = VP_TYPE_NULL;
     pkt->vp_queue = VP_QUEUE_INVALID;
     pkt->vp_priority = VP_PRIORITY_INVALID;
+    pkt->oflow = NULL;
 
     return pkt;
 }
