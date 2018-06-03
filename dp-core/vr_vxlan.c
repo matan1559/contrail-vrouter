@@ -39,20 +39,24 @@ vr_vxlan_input(struct vrouter *router, struct vr_packet *pkt,
         drop_reason = VP_DROP_INVALID_VNID;
         goto fail;
     }
+    if (!fmd->fmd_oflow) {
+        vnid = ntohl(vxlan->vxlan_vnid) >> VR_VXLAN_VNID_SHIFT;
+        if (!pkt_pull(pkt, sizeof(struct vr_vxlan))) {
+            drop_reason = VP_DROP_PULL;
+            goto fail;
+        }
 
-    vnid = ntohl(vxlan->vxlan_vnid) >> VR_VXLAN_VNID_SHIFT;
-    if (!pkt_pull(pkt, sizeof(struct vr_vxlan))) {
-        drop_reason = VP_DROP_PULL;
-        goto fail;
+        nh = (struct vr_nexthop *)vr_itable_get(router->vr_vxlan_table, vnid);
+        if (!nh) {
+            drop_reason = VP_DROP_INVALID_VNID;
+            goto fail;
+        }
+    } else {
+        vnid = fmd->fmd_oflow->tunnel_tag;
+        nh = fmd->fmd_oflow->nh;
     }
 
     vr_fmd_set_label(fmd, vnid, VR_LABEL_TYPE_VXLAN_ID);
-
-    nh = (struct vr_nexthop *)vr_itable_get(router->vr_vxlan_table, vnid);
-    if (!nh) {
-        drop_reason = VP_DROP_INVALID_VNID;
-        goto fail;
-    }
 
     fmd->fmd_vlan = VLAN_ID_INVALID;
 

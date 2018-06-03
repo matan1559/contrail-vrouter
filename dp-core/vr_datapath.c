@@ -654,6 +654,7 @@ vr_fabric_input(struct vr_interface *vif, struct vr_packet *pkt,
     unsigned short pull_len;
     unsigned char *data, eth_dmac[VR_ETHER_ALEN];
 
+    fmd->fmd_oflow = get_offload_flow(pkt);
     fmd->fmd_vlan = vlan_id;
     fmd->fmd_dvrf = vif->vif_vrf;
 
@@ -672,6 +673,11 @@ vr_fabric_input(struct vr_interface *vif, struct vr_packet *pkt,
     if ((pkt->vp_type != VP_TYPE_ARP) &&
             (pkt->vp_flags & VP_FLAG_MULTICAST)) {
         return vif_xconnect(vif, pkt, fmd);
+    }
+
+    if (fmd->fmd_oflow) {
+        pkt->vp_flags |= VP_FLAG_TO_ME;
+        pkt->vp_nh = fmd->fmd_oflow->nh;
     }
 
     data = pkt_data(pkt);

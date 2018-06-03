@@ -23,7 +23,7 @@
 #include <vr_mirror.h>
 #include <vr_vxlan.h>
 #include <vr_qos.h>
-#include <vr_offloads.h>
+#include <vr_dp_offloads.h>
 
 static struct vrouter router;
 struct host_os *vrouter_host;
@@ -107,6 +107,11 @@ static struct vr_module modules[] = {
         .mod_name       =       "QOS",
         .init           =       vr_qos_init,
         .exit           =       vr_qos_exit,
+    },
+    {
+        .mod_name       =       "Offloads",
+        .init           =       vr_dp_offloads_flow_init,
+        .exit           =       vr_dp_offloads_flow_exit,
     },
 
 
