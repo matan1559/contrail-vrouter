@@ -29,12 +29,14 @@
 #include "vr_bridge.h"
 #include "vr_mem.h"
 #include "nl_util.h"
+#include "vr_offloads.h"
 
 #include <rte_version.h>
 #include <rte_errno.h>
 #include <rte_ethdev.h>
 #include <rte_kni.h>
 #include <rte_timer.h>
+
 
 /* vRouter/DPDK command-line options. */
 enum vr_opt_index {
@@ -86,6 +88,8 @@ enum vr_opt_index {
     NETLINK_PORT_OPT_INDEX,
 #define SOCKET_MEM_OPT          "socket-mem"
     SOCKET_MEM_OPT_INDEX,
+#define OFFLOADS_OPT            "offloads"
+    OFFLOADS_OPT_INDEX,
 #define LCORES_OPT              "lcores"
     LCORES_OPT_INDEX,
 #define MEMORY_ALLOC_CHECKS_OPT "vr_memory_alloc_checks"
@@ -99,6 +103,7 @@ extern unsigned int vr_bridge_oentries;
 extern unsigned int vr_mpls_labels;
 extern unsigned int vr_nexthops;
 extern unsigned int vr_vrfs;
+extern unsigned int datapath_offloads;
 
 static int no_daemon_set;
 static int no_gro_set = 0;
@@ -963,6 +968,8 @@ static struct option long_options[] = {
                                                     NULL,                   0},
     [SOCKET_MEM_OPT_INDEX]          =   {SOCKET_MEM_OPT,        required_argument,
                                                     NULL,                   0},
+    [OFFLOADS_OPT_INDEX]            =   {OFFLOADS_OPT,          no_argument,
+                                                    NULL,                   0},
     [MEMORY_ALLOC_CHECKS_OPT_INDEX] =   {MEMORY_ALLOC_CHECKS_OPT, no_argument,
                                                     NULL,                   0},
     [MAX_OPT_INDEX]                 =   {NULL,                  0,
@@ -985,6 +992,7 @@ Usage(void)
         "                         (ex: --"VDEV_OPT" eth_bond0,mode=4,slave=0000:04:00.0)\n"
         "    --"SOCKET_MEM_OPT" MB,...  Memory to allocate on sockets.\n"
         "                         (ex: --"SOCKET_MEM_OPT" 256,256)\n"
+        "    --"OFFLOADS_OPT" Use smart nic HW offloads.\n"
         "\n"
         "    --"VLAN_TCI_OPT" TCI             VLAN tag control information to use\n"
         "                               It may be a value between 0 and 4095\n"
@@ -1149,6 +1157,11 @@ parse_long_opts(int opt_flow_index, char *optarg)
         /* Remove -m option if present. */
         dpdk_argv_remove("-m");
         dpdk_argv_append("--"SOCKET_MEM_OPT, optarg);
+        break;
+
+    case OFFLOADS_OPT_INDEX:
+        printf("Use datapath offloads\n");
+        datapath_offloads = 1;
         break;
 
     case HELP_OPT_INDEX:
