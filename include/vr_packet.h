@@ -1022,6 +1022,7 @@ enum {
 #define FMD_MIRROR_INVALID_DATA 0xFFFF
 
 struct vr_forwarding_md {
+    struct vr_offload_flow *fmd_oflow;
     int32_t fmd_flow_index;
     int32_t fmd_label;
     int8_t fmd_ecmp_nh_index;
@@ -1043,6 +1044,7 @@ struct vr_forwarding_md {
 static inline void
 vr_init_forwarding_md(struct vr_forwarding_md *fmd)
 {
+    fmd->fmd_oflow = NULL;
     fmd->fmd_flow_index = -1;
     fmd->fmd_ecmp_nh_index = -1;
     fmd->fmd_ecmp_src_nh_index = -1;

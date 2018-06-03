@@ -724,6 +724,9 @@ struct host_os freebsd_host = {
 	.hos_get_enabled_log_types      = fh_get_enabled_log_types,
 	.hos_register_nic               = fh_register_nic, /* not used on FreeBSD */
 	.hos_nl_broadcast_supported     = false,
+	.hos_offload_flow_create        = NULL,
+	.hos_offload_flow_destroy       = NULL,
+	.hos_offload_flow_index_get     = NULL,
 };
 
 struct host_os *

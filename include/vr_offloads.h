@@ -6,7 +6,6 @@
 
 #ifndef __VR_OFFLOADS_H__
 #define __VR_OFFLOADS_H__
-
 #include <vr_os.h>
 #include <vr_types.h>
 #include <vr_defs.h>
@@ -33,7 +32,7 @@
 #if defined(__KERNEL__) && defined(__linux__)
     #define vr_rcu_dereference(p) rcu_dereference(p);
 #else
-    #define vr_rcu_dereference(p) NULL;
+    #define vr_rcu_dereference(p) p;
 #endif
 
 struct vr_offload_ops {
