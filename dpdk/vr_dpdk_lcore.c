@@ -31,6 +31,9 @@
 #include <rte_timer.h>
 #include <rte_kni.h>
 
+extern struct vr_btable *offload_flows;
+extern unsigned int datapath_offloads;
+
 /* Returns the least used lcore or VR_MAX_CPUS */
 unsigned
 vr_dpdk_lcore_least_used_get(void)
@@ -790,10 +793,27 @@ vr_dpdk_lcore_vroute(struct vr_dpdk_lcore *lcore, struct vr_interface *vif,
     struct vr_packet *pkt;
     struct vr_dpdk_queue *monitoring_tx_queue;
     struct rte_mbuf *p_copy;
+    struct vr_offload_flow *oflows[VR_DPDK_RX_BURST_SZ];
+    struct vr_offload_flow **oflow = &oflows[0];
     unsigned short vlan_id = VLAN_ID_INVALID;
+    bool fabric = vif_is_fabric(vif);
+    bool offloads = fabric && datapath_offloads;
 
     RTE_LOG_DP(DEBUG, VROUTER, "%s: RX %" PRIu32 " packet(s) from interface %s\n",
          __func__, nb_pkts, vif->vif_name);
+
+    if (offloads) {
+        for (i = 0; i < nb_pkts; i++, oflow++) {
+            if (pkts[i]->ol_flags & PKT_RX_FDIR_ID) {
+                *oflow = (struct vr_offload_flow *)vr_btable_get(offload_flows,
+                                                    pkts[i]->hash.fdir.hi);
+               if (*oflow)
+                   rte_prefetch0(*oflow);
+           } else
+               *oflow = NULL;
+        }
+        oflow = &oflows[0];
+    }
 
     if (unlikely(vif->vif_flags & VIF_FLAG_MONITORED)) {
         monitoring_tx_queue =
@@ -818,35 +838,47 @@ vr_dpdk_lcore_vroute(struct vr_dpdk_lcore *lcore, struct vr_interface *vif,
 
     for (i = 0; i < nb_pkts; i++) {
         mbuf = pkts[i];
-        rte_prefetch0(rte_pktmbuf_mtod(mbuf, char *));
+        rte_prefetch0(pkts[i+1]);
+        rte_prefetch0((char*)pkts[i + 1] + RTE_CACHE_LINE_SIZE);
+        rte_prefetch0((char*)pkts[i + 1] + (RTE_CACHE_LINE_SIZE << 1));
 
-        /*
-         * If vRouter works in VLAN, we check if the packet received on the
-         * physical interface belongs to our VLAN. If it does, the tag should
-         * be stripped. If not (untagged or another tag), it should be
-         * forwarded to the kernel.
-         */
-        if (unlikely(vr_dpdk.vlan_tag != VLAN_ID_INVALID &&
-                vif_is_fabric(vif))) {
-            if ((mbuf->vlan_tci & 0xFFF) != vr_dpdk.vlan_tag) {
-                if (vr_dpdk.vlan_ring == NULL || rte_vlan_insert(&mbuf)) {
-                    vr_dpdk_pfree(mbuf, vif, VP_DROP_VLAN_FWD_ENQ);
-                    continue;
+        if (fabric) {
+            if (offloads) {
+                if (*oflow) {
+                    rte_prefetch0((*oflow)->fe);
+                    rte_prefetch0((char *)(*oflow)->fe + RTE_CACHE_LINE_SIZE);
+                    rte_prefetch0((*oflow)->nh);
+                    rte_prefetch0((char *)(*oflow)->nh + RTE_CACHE_LINE_SIZE);
                 }
-                /* Packets will be dequeued in dpdk_lcore_fwd_io() */
-                if (rte_ring_mp_enqueue(vr_dpdk.vlan_ring, mbuf) != 0)
-                    vr_dpdk_pfree(mbuf, vif, VP_DROP_VLAN_FWD_ENQ);
-                /* Nothing to route, take the next packet. */
-                continue;
-            } else {
-                /* Clear the VLAN flag for the case when the received packet
-                 * belongs to vRouter's VLAN. This resembles the kernel vRouter
-                 * behaviour, in which case a separate vlanX interface (that
-                 * the vRouter is binded to) strips the tag and vRouter gets
-                 * clean ethernet frames from fabric interface. If we did not
-                 * do this, the VLAN tag would be passed to dp-core processing
-                 * and vhost connectivity would be corrupted. */
-                mbuf->ol_flags &= ~PKT_RX_VLAN;
+                oflow++;
+            }
+            /*
+             * If vRouter works in VLAN, we check if the packet received on the
+             * physical interface belongs to our VLAN. If it does, the tag should
+             * be stripped. If not (untagged or another tag), it should be
+             * forwarded to the kernel.
+             */
+            if (unlikely(vr_dpdk.vlan_tag != VLAN_ID_INVALID)) {
+                if ((mbuf->vlan_tci & 0xFFF) != vr_dpdk.vlan_tag) {
+                    if (vr_dpdk.vlan_ring == NULL || rte_vlan_insert(&mbuf)) {
+                        vr_dpdk_pfree(mbuf, vif, VP_DROP_VLAN_FWD_ENQ);
+                        continue;
+                    }
+                    /* Packets will be dequeued in dpdk_lcore_fwd_io() */
+                    if (rte_ring_mp_enqueue(vr_dpdk.vlan_ring, mbuf) != 0)
+                        vr_dpdk_pfree(mbuf, vif, VP_DROP_VLAN_FWD_ENQ);
+                    /* Nothing to route, take the next packet. */
+                    continue;
+                } else {
+                    /* Clear the VLAN flag for the case when the received packet
+                     * belongs to vRouter's VLAN. This resembles the kernel vRouter
+                     * behaviour, in which case a separate vlanX interface (that
+                     * the vRouter is binded to) strips the tag and vRouter gets
+                     * clean ethernet frames from fabric interface. If we did not
+                     * do this, the VLAN tag would be passed to dp-core processing
+                     * and vhost connectivity would be corrupted. */
+                    mbuf->ol_flags &= ~PKT_RX_VLAN;
+                }
             }
         }
 
