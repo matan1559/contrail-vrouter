@@ -85,11 +85,10 @@ vr_mpls_del(vr_mpls_req *req)
         goto generate_resp;
     }
 
-    ret =  __vr_mpls_del(router, req->mr_label);
-
     /* notify hw offload of change, if enabled */
-    if (!ret)
-        vr_offload_mpls_del(req->mr_label);
+    vr_offload_mpls_del(req->mr_label);
+
+    ret =  __vr_mpls_del(router, req->mr_label);
 
 generate_resp:
     vr_send_response(ret);

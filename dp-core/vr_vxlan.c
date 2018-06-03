@@ -173,12 +173,12 @@ vr_vxlan_del(vr_vxlan_req *req)
         goto generate_resp;
     }
 
+    /* notify hw offload of change, if enabled */
+    vr_offload_vxlan_del(req->vxlanr_vnid);
+
     nh = vr_itable_del(router->vr_vxlan_table, req->vxlanr_vnid);
     if (nh)
         vrouter_put_nexthop(nh);
-
-    /* notify hw offload of change, if enabled */
-    vr_offload_vxlan_del(req->vxlanr_vnid);
 
 generate_resp:
     vr_send_response(ret);
