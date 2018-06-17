@@ -1509,7 +1509,7 @@ int
 vr_send_nexthop_encap_tunnel_add(struct nl_client *cl, unsigned int router_id,
         unsigned int type, int nh_index, unsigned int flags, int vrf_index,
         int vif_index, int8_t *smac, int8_t *dmac, struct in_addr sip,
-        struct in_addr dip, int sport, int dport)
+        struct in_addr dip, int sport, int dport, unsigned int family)
 {
     vr_nexthop_req req;
 
@@ -1546,8 +1546,7 @@ vr_send_nexthop_encap_tunnel_add(struct nl_client *cl, unsigned int router_id,
         }
     }
 
-    if (type == NH_ENCAP)
-        req.nhr_family = AF_INET;
+    req.nhr_family = family;
 
     return vr_sendmsg(cl, &req, "vr_nexthop_req");
 }
@@ -1555,7 +1554,7 @@ vr_send_nexthop_encap_tunnel_add(struct nl_client *cl, unsigned int router_id,
 int
 vr_send_nexthop_add(struct nl_client *cl, unsigned int router_id,
         unsigned int type, int nh_index, unsigned int flags, int vrf_index,
-        int vif_index)
+        int vif_index, unsigned int family)
 {
     vr_nexthop_req req;
 
@@ -1568,7 +1567,7 @@ vr_send_nexthop_add(struct nl_client *cl, unsigned int router_id,
     req.nhr_flags = flags;
     req.nhr_type = type;
     req.nhr_encap_oif_id = vif_index;
-    req.nhr_family = AF_INET;
+    req.nhr_family = family;
 
     return vr_sendmsg(cl, &req, "vr_nexthop_req");
 }

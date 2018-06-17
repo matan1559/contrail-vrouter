@@ -422,12 +422,12 @@ op_retry:
                     vrf_id, dst, comp_nh[0], lbl[0]);
         } else if ((type == NH_ENCAP) || (type == NH_TUNNEL)) {
             ret = vr_send_nexthop_encap_tunnel_add(cl, 0, type, nh_id,
-                    flags, vrf_id, if_id, src, dst, sip, dip, sport, dport);
+                    flags, vrf_id, if_id, src, dst, sip, dip, sport, dport, family);
         } else if (type == NH_COMPOSITE) {
             ret = vr_send_nexthop_composite_add(cl, 0, nh_id, flags, vrf_id,
                     comp_nh_ind, comp_nh, lbl, family);
         } else {
-            ret = vr_send_nexthop_add(cl, 0, type, nh_id, flags, vrf_id, if_id);
+            ret = vr_send_nexthop_add(cl, 0, type, nh_id, flags, vrf_id, if_id, family);
         }
 
         break;
@@ -760,8 +760,10 @@ validate_options(void)
         if (opt_set(RPOL_OPT_IND))
             flags |= NH_FLAG_RELAXED_POLICY;
 
-        if (opt_set(L2_OPT_IND))
+        if (opt_set(L2_OPT_IND)) {
             family = AF_BRIDGE;
+            flags |= NH_FLAG_L2_CONTROL_DATA;
+        }
 
         if (opt_set(RLKUP_OPT_IND))
             flags |= NH_FLAG_ROUTE_LOOKUP;
