@@ -393,8 +393,10 @@ vr_uvmh_set_features(vr_uvh_client_t *vru_cl)
         vif->vif_flags &= ~VIF_FLAG_MRG_RXBUF;
         vr_dpdk_set_vhost_send_func(vru_cl->vruc_idx, 0);
     }
-    vr_dpdk_store_persist_feature(uvhm_client_name(vru_cl),
-                                  vru_cl->vruc_msg.u64);
+    /* Save to cache only if mrgbuf is enabled */
+    if (dpdk_check_rx_mrgbuf_disable() == 0)
+        vr_dpdk_store_persist_feature(uvhm_client_name(vru_cl),
+                                      vru_cl->vruc_msg.u64);
     return 0;
 }
 
