@@ -1480,7 +1480,7 @@ vr_flow_allow_new_flow(struct vrouter *router, struct vr_packet *pkt,
 
     return vr_flow_vif_allow_new_flow(router, pkt, drop_reason);
 }
-
+extern unsigned int datapath_offloads;
 flow_result_t
 vr_flow_lookup(struct vrouter *router, struct vr_flow *key,
                struct vr_packet *pkt, struct vr_forwarding_md *fmd)
@@ -1515,6 +1515,8 @@ vr_flow_lookup(struct vrouter *router, struct vr_flow *key,
             flow_e->fe_vrf = fmd->fmd_dvrf;
             /* mark as hold */
             vr_flow_entry_set_hold(router, flow_e, burst);
+        } else if (datapath_offloads && vif_is_fabric(pkt->vp_if) && (flow_e->fe_action != VR_FLOW_ACTION_HOLD)) {
+            vr_printf("Should be offloaded\n");
         }
     } else {
         flow_e = fmd->fmd_fe;
