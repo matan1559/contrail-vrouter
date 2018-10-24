@@ -15,6 +15,12 @@
 #include <vr_mirror.h>
 #include <vr_route.h>
 
+enum vr_offloads_tag_type {
+    VR_OFFLOADS_TAG_TYPE_MPLS_L2,
+    VR_OFFLOADS_TAG_TYPE_MPLS_L3,
+    VR_OFFLOADS_TAG_TYPE_VXLAN,
+    VR_OFFLOADS_TAG_TYPE_MAX
+};
 
 struct vr_offload_flow {
     struct vr_nexthop *nh;
@@ -30,7 +36,7 @@ struct vr_offload_flow {
 
 struct vr_offload_tag {
     unsigned int tag;
-    bool is_mpls;
+    struct vr_nexthop *nh;
     bool valid;
 };
 

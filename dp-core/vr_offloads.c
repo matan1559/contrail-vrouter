@@ -65,26 +65,30 @@ vr_offloads_mpls_add(struct vr_nexthop *nh, int label)
     if (!nh)
         return -EINVAL;
     if (!(nh->nh_flags & NH_FLAG_VALID) || (nh->nh_flags & NH_FLAG_MCAST) ||
-        nh->nh_type != NH_ENCAP)
+        nh->nh_type != NH_ENCAP || !nh->nh_dev)
         /* Not a valid nexthop to be offloaded */
         return 0;
 
-    otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, nh->nh_id);
+    otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, nh->nh_dev->vif_nh_id);
     if (!otag) {
         vr_printf("offload: Invalid tag for nexthop ID %u\n",nh->nh_id);
         return 0;
     }
 
+    if (nh->nh_family == AF_BRIDGE && (nh->nh_flags & NH_FLAG_L2_CONTROL_DATA))
+        otag += VR_OFFLOADS_TAG_TYPE_MPLS_L2;
+    else if (nh->nh_family != AF_BRIDGE)
+        otag += VR_OFFLOADS_TAG_TYPE_MPLS_L3;
+    else
+        return 0;
+
     if (!otag->valid) {
         otag->tag = label;
-        otag->is_mpls = true;
+        otag->nh = nh;
         otag->valid = true;
-    } else if (otag->is_mpls && otag->tag != label) {
-        vr_printf("offload: 2 different MPLS label point to the same"
-                  " UNICAST ENCAP nexthop\n");
-    } else if (!otag->is_mpls) {
-        vr_printf("offload: MPLS label and VXLAN vni point to the same"
-                  " UNICAST ENCAP nexthop\n");
+    } else if (otag->tag != label) {
+        vr_printf("offload: 2 different MPLS labels point to the same"
+                  " tag type of vif %u nexthop\n", nh->nh_dev->vif_idx);
     }
 
     return 0;
@@ -98,26 +102,25 @@ vr_offloads_vxlan_add(struct vr_nexthop * nh, int vnid)
     if (!nh)
         return -EINVAL;
     if (!(nh->nh_flags & NH_FLAG_VALID) || (nh->nh_flags & NH_FLAG_MCAST) ||
-        nh->nh_type != NH_ENCAP)
+        nh->nh_type != NH_ENCAP || !nh->nh_dev)
         /* Not a valid nexthop to be offloaded */
         return 0;
 
-    otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, nh->nh_id);
+    otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, nh->nh_dev->vif_nh_id);
     if (!otag) {
         vr_printf("offload: Invalid tag for nexthop ID %u\n",nh->nh_id);
         return 0;
     }
 
+    otag += VR_OFFLOADS_TAG_TYPE_VXLAN;
+
     if (!otag->valid) {
         otag->tag = vnid;
-        otag->is_mpls = false;
+        otag->nh = nh;
         otag->valid = true;
-    } else if (!otag->is_mpls && otag->tag != vnid) {
-        vr_printf("offload: 2 different VXLAN vni point to the same"
-                  " UNICAST ENCAP nexthop\n");
-    } else if (otag->is_mpls) {
-        vr_printf("offload: VXLAN vni and MPLS label point to the same"
-                  " UNICAST ENCAP nexthop\n");
+    } else if (otag->tag != vnid) {
+        vr_printf("offload: 2 different VXLAN VNIs point to the same"
+                  " tag type of vif %u nexthop\n", nh->nh_dev->vif_idx);
     }
 
     return 0;
@@ -133,13 +136,23 @@ vr_offloads_mpls_del(int label)
     if (!nh)
         return -EINVAL;
 
-    otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, nh->nh_id);
+    if (!nh->nh_dev)
+        return 0;
+
+    otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, nh->nh_dev->vif_nh_id);
     if (!otag) {
         vr_printf("offload: Invalid tag for nexthop ID %u\n",nh->nh_id);
         return 0;
     }
 
-    if (otag->valid && otag->is_mpls && otag->tag == label)
+    if (nh->nh_family == AF_BRIDGE && (nh->nh_flags & NH_FLAG_L2_CONTROL_DATA))
+        otag += VR_OFFLOADS_TAG_TYPE_MPLS_L2;
+    else if (nh->nh_family != AF_BRIDGE)
+        otag += VR_OFFLOADS_TAG_TYPE_MPLS_L3;
+    else
+        return 0;
+
+    if (otag->valid && otag->tag == label)
         otag->valid = false;
 
     return 0;
@@ -155,13 +168,18 @@ vr_offloads_vxlan_del(int vnid)
     if (!nh)
         return -EINVAL;
 
-    otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, nh->nh_id);
+    if (!nh->nh_dev)
+        return 0;
+
+    otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, nh->nh_dev->vif_nh_id);
     if (!otag) {
         vr_printf("offload: Invalid tag for nexthop ID %u\n",nh->nh_id);
         return 0;
     }
 
-    if (otag->valid && !otag->is_mpls && otag->tag == vnid)
+    otag += VR_OFFLOADS_TAG_TYPE_VXLAN;
+
+    if (otag->valid && otag->tag == vnid)
         otag->valid = false;
 
     return 0;
@@ -249,7 +267,7 @@ vr_offloads_flow_set(struct vr_flow_entry * fe, unsigned int fe_index,
         return -EINVAL;
 
     otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, nh->nh_id);
-    if (!otag || !otag->valid) {
+    if (!otag) {
         vr_printf("offload: invalid tag for nexthop ID %u\n", nh->nh_id);
         return 0;
     }
@@ -263,29 +281,39 @@ vr_offloads_flow_set(struct vr_flow_entry * fe, unsigned int fe_index,
         /* HW cannot parse L2 MPLS without CW, so this flow cannot be offloaded */
         return 0;
 
-    if (otag->is_mpls && (snh->nh_flags & NH_FLAG_TUNNEL_GRE)) {
-        oflow->tunnel_type = NH_FLAG_TUNNEL_GRE;
-        oflow->tunnel_tag = otag->tag;
-        oflow->is_mpls_l2 = nh->nh_family == AF_BRIDGE;
-    } else if (otag->is_mpls && (snh->nh_flags & NH_FLAG_TUNNEL_UDP_MPLS)) {
-        oflow->tunnel_type = NH_FLAG_TUNNEL_UDP_MPLS;
-        oflow->tunnel_tag = otag->tag;
-        oflow->is_mpls_l2 = nh->nh_family == AF_BRIDGE;
-    } else if (!otag->is_mpls && (snh->nh_flags & NH_FLAG_TUNNEL_VXLAN)) {
-        oflow->tunnel_type = NH_FLAG_TUNNEL_VXLAN;
-        oflow->tunnel_tag = otag->tag;
-        oflow->is_mpls_l2 = true;
+    if (snh->nh_flags & NH_FLAG_TUNNEL_GRE) {
+        otag += nh->nh_family == AF_BRIDGE ? VR_OFFLOADS_TAG_TYPE_MPLS_L2 :
+                    VR_OFFLOADS_TAG_TYPE_MPLS_L3;
+        if (otag->valid) {
+            oflow->tunnel_type = NH_FLAG_TUNNEL_GRE;
+            oflow->tunnel_tag = otag->tag;
+            oflow->is_mpls_l2 = nh->nh_family == AF_BRIDGE;
+        }
+    } else if (snh->nh_flags & NH_FLAG_TUNNEL_UDP_MPLS) {
+        otag += nh->nh_family == AF_BRIDGE ? VR_OFFLOADS_TAG_TYPE_MPLS_L2 :
+                    VR_OFFLOADS_TAG_TYPE_MPLS_L3;
+        if (otag->valid) {
+            oflow->tunnel_type = NH_FLAG_TUNNEL_UDP_MPLS;
+            oflow->tunnel_tag = otag->tag;
+            oflow->is_mpls_l2 = nh->nh_family == AF_BRIDGE;
+        }
+    } else if (snh->nh_flags & NH_FLAG_TUNNEL_VXLAN) {
+        otag += VR_OFFLOADS_TAG_TYPE_VXLAN;
+        if (otag->valid) {
+            oflow->tunnel_type = NH_FLAG_TUNNEL_VXLAN;
+            oflow->tunnel_tag = otag->tag;
+            oflow->is_mpls_l2 = true;
+        }
     } else {
         /* Not a valid flow to be offloaded */
         return 0;
     }
 
-
     oflow->pvif = pvif;
     oflow->fe = fe;
     oflow->ip = host_ip;
     oflow->fe_index = fe_index;
-    oflow->nh = nh;
+    oflow->nh = otag->nh;
 
     ret = vr_offload_flow_create(oflow);
     if (ret) {
@@ -310,6 +338,8 @@ struct vr_offload_ops vr_offload_ops = {
 int
 vr_offloads_init(struct vrouter *router)
 {
+    unsigned int size;
+
     if (!datapath_offloads)
         return 0;
 
@@ -318,15 +348,18 @@ vr_offloads_init(struct vrouter *router)
         return -ENOSYS;
 
     if (!offload_tags) {
-        offload_tags = vr_btable_alloc(vr_nexthops,
-                                       sizeof(struct vr_offload_tag));
+        /* Round up to the next divisor */
+        for (size = sizeof(struct vr_offload_tag) * VR_OFFLOADS_TAG_TYPE_MAX;
+             VR_SINGLE_ALLOC_LIMIT % size; size++);
+        offload_tags = vr_btable_alloc(vr_nexthops, size);
         if (!offload_tags)
             return -ENOMEM;
     }
 
     if (!offload_flows) {
-        offload_flows = vr_btable_alloc(vr_flow_entries + vr_oflow_entries,
-                                        sizeof(struct vr_offload_flow));
+        /* Round up to the next divisor */
+        for (size = sizeof(struct vr_offload_flow); VR_SINGLE_ALLOC_LIMIT % size; size++);
+        offload_flows = vr_btable_alloc(vr_flow_entries + vr_oflow_entries, size);
         if (!offload_flows) {
             vr_btable_free(offload_tags);
             offload_tags = NULL;
@@ -356,7 +389,7 @@ vr_offloads_exit(struct vrouter *router, bool soft_reset)
         return;
 
     if (offload_flows) {
-        size = vr_btable_size(offload_flows);
+        size = vr_btable_entries(offload_flows);
         for (i = 0; i < size; i++) {
             oflow = (struct vr_offload_flow *)vr_btable_get(offload_flows, i);
             if (!oflow || !oflow->flow_handle)
@@ -371,11 +404,12 @@ vr_offloads_exit(struct vrouter *router, bool soft_reset)
     }
 
     if (offload_tags) {
-        size = vr_btable_size(offload_tags);
+        size = vr_btable_entries(offload_tags);
         for (i = 0; i < size; i++) {
             otag = (struct vr_offload_tag *)vr_btable_get(offload_tags, i);
             if (otag)
-                memset(otag, 0 ,sizeof(*otag));
+                for (i = 0; i < VR_OFFLOADS_TAG_TYPE_MAX; i++)
+                    memset(otag + i, 0, sizeof(*otag));
         }
 
         if (!soft_reset) {
