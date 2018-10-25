@@ -80,7 +80,7 @@ vr_offloads_mpls_add(struct vr_nexthop *nh, int label)
         vr_printf("offload: Invalid tag for nexthop ID %u\n",nh->nh_id);
         return 0;
     }
-
+    vr_printf("Matan: MPLS add label=%u, nh = %u, vif =%u vif_nh=%u\n",label,nh->nh_id,nh->nh_dev->vif_idx,nh->nh_dev->vif_nh_id);
     if (nh->nh_family == AF_BRIDGE && (nh->nh_flags & NH_FLAG_L2_CONTROL_DATA))
         otag += VR_OFFLOADS_TAG_TYPE_MPLS_L2;
     else if (nh->nh_family != AF_BRIDGE)
@@ -148,6 +148,7 @@ vr_offloads_mpls_del(int label)
         vr_printf("offload: Invalid tag for nexthop ID %u\n",nh->nh_id);
         return 0;
     }
+    vr_printf("Matan: MPLS del label=%u, nh = %u, vif =%u\n",label,nh->nh_id,nh->nh_dev->vif_idx);
 
     if (nh->nh_family == AF_BRIDGE && (nh->nh_flags & NH_FLAG_L2_CONTROL_DATA))
         otag += VR_OFFLOADS_TAG_TYPE_MPLS_L2;
@@ -328,6 +329,7 @@ vr_offloads_flow_set(struct vr_flow_entry * fe, unsigned int fe_index,
         return 0;
     }
 
+    vr_printf("Tag: vif = %u vifnh = %u fnh = %u tag =0x%X nhid=%u\n",nh->nh_dev->vif_idx,nh->nh_dev->vif_nh_id, fe->fe_key.flow_nh_id, oflow->tunnel_tag,oflow->nh->nh_id);
     oflow->pvif = pvif;
     oflow->fe = fe;
     oflow->ip = host_ip;

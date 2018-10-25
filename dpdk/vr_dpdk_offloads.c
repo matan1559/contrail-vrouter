@@ -14,7 +14,7 @@ dpdk_offload_flow_destroy(struct vr_offload_flow *oflow)
     struct rte_flow_error error;
     int ret = 0;
 
-    RTE_LOG(DEBUG, VROUTER, "Destroy dpdk offload flow:\n"
+    RTE_LOG(ERR, VROUTER, "Destroy dpdk offload flow:\n"
             "\t\tflow index = %u\n"
             "\t\tflow interface ID = %u\n"
             "\t\tflow host ip = 0x%X\n"
@@ -201,7 +201,7 @@ dpdk_offload_flow_create(struct vr_offload_flow *oflow)
     uint32_t header;
     int i;
 
-    RTE_LOG(DEBUG, VROUTER, "Create dpdk offload flow:\n"
+    RTE_LOG(ERR, VROUTER, "Create dpdk offload flow:\n"
             "\t\tflow index = %u\n"
             "\t\tflow interface ID = %u\n"
             "\t\tflow host ip = 0x%X\n"
